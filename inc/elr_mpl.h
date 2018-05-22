@@ -109,7 +109,7 @@ elr_mpl_t,*elr_mpl_ht;
 /*! \def ELR_MPL_INITIALIZER
  *  \brief elr_mpl_t constant for initializing.
  */
-#define ELR_MPL_INITIALIZER   {NULL,0}
+extern ELR_MPL_API elr_mpl_t ELR_MPL_INITIALIZER;
 
 /*
 ** 初始化内存池，内部创建一个全局内存池。
@@ -144,11 +144,13 @@ ELR_MPL_API elr_mpl_t elr_mpl_create(elr_mpl_ht fpool,size_t obj_size);
 ** 创建一个内存池。
 ** 第一个参数表示父内存池，如果其为NULL，表示创建的内存池的父内存池是全局内存池。
 ** 第二个参数表示分配单元大小。
-** 第三个参数提供一个函数指针，该函数会在释放内存时执行。
+** 第三个参数提供一个函数指针，该函数会在成功申请内存后执行。
+** 第四个参数提供一个函数指针，该函数会在释放内存时执行。
 */
 /*! \brief create a memory pool.
  *  \param fpool the parent pool of the about to created pool.
  *  \param obj_size the size of memory block can alloc from the pool.
+ *  \param on_alloc the function that will called after memory alloced.
  *  \param on_free the function that will called before free memory.
  *  \retval NULL if failed.
  *
@@ -158,6 +160,20 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
 										size_t obj_size,
 										elr_mpl_callback on_alloc,
 										elr_mpl_callback on_free);
+
+/*
+** 创建可以从中申请不同大小内存块的内存池。
+** 第一个参数表示父内存池，如果其为NULL，表示创建的内存池的父内存池是全局内存池。
+** 第二个参数提供一个函数指针，该函数会在成功申请内存后执行。
+** 第三个参数提供一个函数指针，该函数会在释放内存时执行。
+** 第四个参数表示有多少个不同大小的obj_size。
+** 之后传入多个size_t类型的参数指定将要用到的多个最可能obj_size
+*/
+ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool,
+										   elr_mpl_callback on_alloc,
+										   elr_mpl_callback on_free,
+	                                       int obj_size_count,
+	                                       ...);
 
 
 /*
@@ -183,6 +199,12 @@ ELR_MPL_API int  elr_mpl_avail(elr_mpl_ht pool);
  *  of elr_mpl_create when create the pool.
  */
 ELR_MPL_API void* elr_mpl_alloc(elr_mpl_ht pool);
+
+/*
+** 从内存池中申请指定大小的内存。
+** pool不可为NULL
+*/
+ELR_MPL_API void* elr_mpl_alloc_multi(elr_mpl_ht pool, size_t size);
 
 /*
 ** 获取从内存池中申请的内存块的尺寸。

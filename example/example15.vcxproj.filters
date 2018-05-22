@@ -21,9 +21,15 @@
     <ClCompile Include="example.c">
       <Filter>example</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\elr_mtx.c">
+      <Filter>elr_mpl\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\elr_mpl.h">
+      <Filter>elr_mpl\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\elr_mtx.h">
       <Filter>elr_mpl\inc</Filter>
     </ClInclude>
   </ItemGroup>

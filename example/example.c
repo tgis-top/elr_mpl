@@ -38,7 +38,7 @@ int main()
 	elr_mpl_destroy(&mypool);
 	printf("destroy mypool.\n",len);
 
-	printf("when mypool has destoryed, it`s sub pool, mysubpool, did %s destoryed.\n",
+	printf("when mypool has destoryed, it`s sub pool, mysubpool, had %s destoryed.\n",
 		elr_mpl_avail(&mysubpool) == 0?"also":"not");
 
 	elr_mpl_finalize();
