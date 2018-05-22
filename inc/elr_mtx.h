@@ -2,7 +2,7 @@
 #define __ELR_MTX_H__
 
 
-#ifdef   WINDOWS
+#if defined(_MSC_VER) || defined(__MINGW32__)
 #include <windows.h>
 
 /*! \brief platform independent mutex type.

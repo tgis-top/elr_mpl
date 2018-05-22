@@ -280,7 +280,7 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool, elr_mpl_callback on
 	va_start(obj_size_list, obj_size_count);
 	for (i = 0; i < obj_size_count; i++)
 	{
-		obj_size = va_arg(obj_size_list, size_t);
+		obj_size = va_arg(obj_size_list, int);
 		mpl = elr_mpl_create_ex(fpool, obj_size, on_alloc, on_free);
 		if (mpl.pool == NULL)
 		{

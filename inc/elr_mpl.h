@@ -167,7 +167,8 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
 ** 第二个参数提供一个函数指针，该函数会在成功申请内存后执行。
 ** 第三个参数提供一个函数指针，该函数会在释放内存时执行。
 ** 第四个参数表示有多少个不同大小的obj_size。
-** 之后传入多个size_t类型的参数指定将要用到的多个最可能obj_size
+** 之后传入多个int类型的参数指定将要用到的多个最可能obj_size
+** obj_size必须是int类型，否则会创建失败
 */
 ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool,
 										   elr_mpl_callback on_alloc,

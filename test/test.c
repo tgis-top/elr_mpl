@@ -7,7 +7,12 @@
 
 unsigned long my_clock()
 {
-     __asm RDTSC
+#ifdef _WIN64
+	return clock();
+#else
+	__asm RDTSC
+#endif // X64
+
 }
 
 
