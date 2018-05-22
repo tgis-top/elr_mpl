@@ -782,6 +782,11 @@ void _elr_inter_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 		_elr_inter_mpl_destory(temp_pool, 1, lock_this);
 	}
 
+#ifdef ELR_USE_THREAD
+	if (inner == 1 && lock_this == 1)
+		elr_mtx_unlock(&(pool->pool_mutex));
+#endif // ELR_USE_THREAD
+
 	if (pool->on_slice_free != NULL)
 	{
 		elr_mem_slice* temp_slice = pool->first_occupied_slice;
@@ -827,9 +832,4 @@ void _elr_inter_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 	/*如果不是根节点*/
 	if(pool != &g_mem_pool)
 		elr_mpl_free(pool);
-
-#ifdef ELR_USE_THREAD
-	if (inner == 1 && lock_this == 1)
-        elr_mtx_unlock(&(pool->pool_mutex));
-#endif // ELR_USE_THREAD
 }

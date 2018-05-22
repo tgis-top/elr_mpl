@@ -12,13 +12,13 @@ int main()
 	elr_mpl_init();	
 
 	mypool = elr_mpl_create(NULL,256);
-	printf("%s\n","create a memory pool: mypool.");
+	printf("%s\n","create a memory pool: mypool. It`s object size is 256.");
 
 	mysubpool = elr_mpl_create(&mypool,128);
 	printf("%s\n","create a sub memory pool of mypool, name is mysubpool.");
 
 	mem = elr_mpl_alloc(&mysubpool);
-	printf("%s\n","alloc a memory block form mysubpool.");
+	printf("%s\n","alloc a memory block form mysubpool. It`s object size is 128.");
 
 	len = elr_mpl_size(mem);
 	printf("the memory block size is %d.\n",len);
@@ -34,6 +34,18 @@ int main()
 
 	elr_mpl_free(mem);
 	printf("give back the memory block to mypool.\n",len);
+
+	mem = elr_mpl_alloc_multi(NULL, 69);
+	printf("alloc a random memory block of size 69.\n", len);
+
+	len = elr_mpl_size(mem);
+	printf("the actual memory block size is %d.\n", len);
+
+	mem = elr_mpl_alloc_multi(NULL, 2096);
+	printf("alloc a random memory block of size 2096.\n", len);
+
+	len = elr_mpl_size(mem);
+	printf("the actual memory block size is %d.\n", len);
 
 	elr_mpl_destroy(&mypool);
 	printf("destroy mypool.\n",len);
