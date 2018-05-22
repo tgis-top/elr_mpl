@@ -1,6 +1,6 @@
 #include "elr_mtx.h"
 
-#ifdef   WINDOWS
+#if defined(_MSC_VER) || defined(__MINGW32__)
 
 elr_counter_t elr_atomic_inc(elr_atomic_t* v)
 {
