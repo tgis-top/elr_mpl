@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="elr_mpl">
+      <UniqueIdentifier>{62587264-d337-4798-85ba-76cb4a440e86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="elr_mpl\src">
+      <UniqueIdentifier>{58256d1e-2688-4818-98ea-4a3450cb15b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="elr_mpl\inc">
+      <UniqueIdentifier>{a66f5e73-d572-45ca-905b-a0e797ccda11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{a2dad2d9-dbbd-414d-83d5-308d09b748d7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\elr_mpl.c">
+      <Filter>elr_mpl\src</Filter>
+    </ClCompile>
+    <ClCompile Include="test.c">
+      <Filter>test</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\inc\elr_mpl.h">
+      <Filter>elr_mpl\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="cunit.h">
+      <Filter>test</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

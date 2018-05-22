@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="elr_mpl">
+      <UniqueIdentifier>{96042a60-d880-4ade-9b3e-31a514183754}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="elr_mpl\src">
+      <UniqueIdentifier>{a128a22c-3b34-40dd-a823-5c8b753b033d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="elr_mpl\inc">
+      <UniqueIdentifier>{9f2a9931-5e85-4935-b636-dffb1b0d0c56}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="example">
+      <UniqueIdentifier>{efd3a8b7-031d-480f-9ad0-992e95ac7f17}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\elr_mpl.c">
+      <Filter>elr_mpl\src</Filter>
+    </ClCompile>
+    <ClCompile Include="example.c">
+      <Filter>example</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\inc\elr_mpl.h">
+      <Filter>elr_mpl\inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
