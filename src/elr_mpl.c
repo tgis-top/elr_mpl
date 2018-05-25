@@ -158,14 +158,14 @@ ELR_MPL_API int elr_mpl_init()
 			elr_atomic_dec(&g_mpl_refs);
 			return 0;
 		}
-		g_multi_mem_pool = elr_mpl_create_multi(NULL, NULL, NULL, 13, 64, 98, 128, 192, 256, 384, 512, 768, 1024, 1280, 1536, 1792, 2056);
+		g_multi_mem_pool = elr_mpl_create_multi_2(NULL, NULL, NULL, 13, 64, 98, 128, 192, 256, 384, 512, 768, 1024, 1280, 1536, 1792, 2048);
 		if (g_multi_mem_pool.pool == NULL)
 		{
 			elr_atomic_dec(&g_mpl_refs);
 			return 0;
 		}
 #else
-		g_multi_mem_pool = elr_mpl_create_multi(NULL, NULL, NULL, 13, 64, 98, 128, 192, 256, 384, 512, 768, 1024, 1280, 1536, 1792, 2056);
+		g_multi_mem_pool = elr_mpl_create_multi_2(NULL, NULL, NULL, 13, 64, 98, 128, 192, 256, 384, 512, 768, 1024, 1280, 1536, 1792, 2048);
 		if (g_multi_mem_pool.pool == NULL)
 		{
 			g_mpl_refs--;
@@ -258,7 +258,7 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
 	return mpl;
 }
 
-ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool, elr_mpl_callback on_alloc, elr_mpl_callback on_free, int obj_size_count, ...)
+ELR_MPL_API elr_mpl_t elr_mpl_create_multi_1(elr_mpl_ht fpool, elr_mpl_callback on_alloc, elr_mpl_callback on_free, int obj_size_count, size_t* obj_size)
 {
 	elr_mpl_t      first_mpl = ELR_MPL_INITIALIZER;
 	elr_mpl_t      mpl = ELR_MPL_INITIALIZER;
@@ -267,8 +267,6 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool, elr_mpl_callback on
 	int i = 0;
 	int j = 0;
 	int valid = 1;
-	size_t obj_size;
-	va_list obj_size_list; 
 
 	multi_pool = malloc(obj_size_count * sizeof(elr_mem_pool*));
 
@@ -277,11 +275,9 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool, elr_mpl_callback on
 		return ELR_MPL_INITIALIZER;
 	}
 
-	va_start(obj_size_list, obj_size_count);
 	for (i = 0; i < obj_size_count; i++)
 	{
-		obj_size = va_arg(obj_size_list, int);
-		mpl = elr_mpl_create_ex(fpool, obj_size, on_alloc, on_free);
+		mpl = elr_mpl_create_ex(fpool, obj_size[i], on_alloc, on_free);
 		if (mpl.pool == NULL)
 		{
 			valid = 0;
@@ -295,7 +291,6 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool, elr_mpl_callback on
 			multi_pool[i]->multi_count = obj_size_count;
 		}
 	}
-	va_end(obj_size_list);
 
 	if (valid == 1)
 	{
@@ -319,13 +314,42 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool, elr_mpl_callback on
 		first_mpl = ELR_MPL_INITIALIZER;
 		for (j = 0; j < i; j++)
 		{
-			_elr_inter_mpl_destory(multi_pool[j],0,0);
+			_elr_inter_mpl_destory(multi_pool[j], 0, 0);
 		}
 	}
 
 	free(multi_pool);
 
 	return first_mpl;
+}
+
+ELR_MPL_API elr_mpl_t elr_mpl_create_multi_2(elr_mpl_ht fpool, elr_mpl_callback on_alloc, elr_mpl_callback on_free, int obj_size_count, ...)
+{
+	elr_mpl_t      mpl = ELR_MPL_INITIALIZER;
+
+	int i = 0;
+	size_t* obj_size;
+	va_list obj_size_list; 
+
+	obj_size = (size_t*)malloc(obj_size_count * sizeof(size_t));
+
+	if (obj_size == NULL)
+	{
+		return ELR_MPL_INITIALIZER;
+	}
+
+	va_start(obj_size_list, obj_size_count);
+	for (i = 0; i < obj_size_count; i++)
+	{
+		obj_size[i] = va_arg(obj_size_list, int);
+	}
+	va_end(obj_size_list);
+
+	mpl =  elr_mpl_create_multi_1(fpool, on_alloc, on_free, obj_size_count, obj_size);
+
+	free(obj_size);
+
+	return mpl;
 }
 
 
