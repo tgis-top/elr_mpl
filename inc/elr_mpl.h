@@ -218,7 +218,7 @@ ELR_MPL_API void* elr_mpl_alloc(elr_mpl_ht pool);
 
 /*
 ** 从内存池中申请指定大小的内存。
-** pool不可为NULL
+** pool为NULL时从全局内存池申请
 */
 ELR_MPL_API void* elr_mpl_alloc_multi(elr_mpl_ht pool, size_t size);
 
