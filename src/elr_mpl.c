@@ -10,15 +10,23 @@
 #include "elr_mtx.h"
 #endif // ELR_USE_THREAD
 
-/*最大内存切片的尺寸*/
-/** max memory node size. it can be changed to fit the memory consume more.  */
-#define ELR_MAX_SLICE_SIZE       32768  /*32KB*/
-/*最大内存切片的数目*/
-/** max memory slice size. it can be changed to fit the memory consume more. */
-#define ELR_MAX_SLICE_COUNT      64   /*64*/
+/*将内存节点划分成多个内存切片时的最大内存切片的尺寸。*/
+/*当切片尺寸超过此值时，一个节点中只有一个切片。*/
+#define ELR_MAX_SLICE_SIZE                 32768  /*32KB*/
+
+/*将内存节点划分成多个内存切片时的最大内存切片的数目*/
+/*将内存节点划分成多个内存切片时的最大内存节点大小为 ELR_MAX_SLICE_COUNT*ELR_MAX_SLICE_SIZE */
+/*实际需要的内存切片越大时，最终的内存切片数量越少，*/
+/*通过一个公式保证了内存节点的大型近似等于 ELR_MAX_SLICE_COUNT*ELR_MAX_SLICE_SIZE*/
+#define ELR_MAX_SLICE_COUNT                64   /*64*/
+
 /*多尺寸内存池中的子池都不满足申请大小时新创建的内存池的内存块大小的基数*/
 /*即新创建的内存池的内存块大小应该是大于申请大小的ELR_OVERRANGE_UNIT_SIZE的最小整数倍*/
-#define ELR_OVERRANGE_UNIT_SIZE  4096  /*4KB*/
+#define ELR_OVERRANGE_UNIT_SIZE            1024  /*1KB*/
+
+/*自动给归还节点占用内存给操作系统的内存占用阈值*/
+/*当通过本内存池申请的内存总数少于512MB时，释放内存不会真的释放*/
+#define ELR_AUTO_FREE_NODE_THRESHOLD       536870912 /*512MB*/
 
 #define ELR_ALIGN(size, boundary)     (((size) + ((boundary) - 1)) & ~((boundary) - 1)) 
 
@@ -94,6 +102,8 @@ elr_mem_pool;
 static elr_mem_pool   g_mem_pool;
 /*全局多尺寸内存池*/
 static elr_mpl_t      g_multi_mem_pool;
+/*所有内存池占据的内存总量*/
+static size_t         g_occupation_size;
 
 elr_mpl_t ELR_MPL_INITIALIZER = { NULL,0 };
 
@@ -107,8 +117,8 @@ static long           g_mpl_refs = 0;
 
 /*为内存池申请一个内存节点*/
 void                      _elr_alloc_mem_node(elr_mem_pool *pool);
-/*移除一个未使用的NODE，返回0表示没有移除*/
-int                       _elr_remove_unused_node(elr_mem_node* node);
+/*释放内存节点*/
+void                      _elr_free_mem_node(elr_mem_node* node);
 /*在内存池的刚刚创建的内存节点中分配一个内存切片*/
 elr_mem_slice*            _elr_slice_from_node(elr_mem_pool *pool);
 /*在内存池中分配一个内存切片，该方法将会调用上述两方法*/
@@ -132,6 +142,7 @@ ELR_MPL_API int elr_mpl_init()
 	if(g_mpl_refs == 1)
 	{
 #endif // ELR_USE_THREAD
+		g_occupation_size = 0;
 		g_mem_pool.parent = NULL;
 		g_mem_pool.first_child = NULL;
 		g_mem_pool.prev = NULL;
@@ -530,27 +541,30 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
 	else
 		pool->first_occupied_slice = slice->next;
 
-	if(node->free_slice_head == NULL)
+	if (node->using_slice_count == 0
+		&& g_occupation_size >= ELR_AUTO_FREE_NODE_THRESHOLD)
 	{
-		node->free_slice_head = slice;
+		_elr_free_mem_node(node);
+		slice->next = node->free_slice_tail->next;
+		if (node->free_slice_tail->next != NULL)
+			node->free_slice_tail->next->prev = slice;
+		node->free_slice_tail->next = slice;
+		slice->prev = node->free_slice_tail;
 		node->free_slice_tail = slice;
-		slice->next = pool->first_free_slice;
-		if(pool->first_free_slice != NULL)
-			pool->first_free_slice->prev = slice;
-		pool->first_free_slice = slice;
 	}
 	else
 	{
-		if(!_elr_remove_unused_node(node))
+		if (node->free_slice_head == NULL)
 		{
-			slice->next = node->free_slice_tail->next;
-			if(node->free_slice_tail->next != NULL)
-				node->free_slice_tail->next->prev = slice;
-			node->free_slice_tail->next = slice;
-			slice->prev = node->free_slice_tail;
+			node->free_slice_head = slice;
 			node->free_slice_tail = slice;
+			slice->next = pool->first_free_slice;
+			if (pool->first_free_slice != NULL)
+				pool->first_free_slice->prev = slice;
+			pool->first_free_slice = slice;
 		}
 	}
+
 #ifdef ELR_USE_THREAD
     elr_mtx_unlock(&pool->pool_mutex);
 #endif // ELR_USE_THREAD
@@ -634,6 +648,8 @@ void _elr_alloc_mem_node(elr_mem_pool *pool)
     elr_mem_node* pnode = (elr_mem_node*)malloc(pool->node_size);
     if(pnode == NULL)
         return;
+
+	g_occupation_size += pool->node_size;
     pool->newly_alloc_node = pnode;
     pnode->owner = pool;
     pnode->first_avail = (char*)pnode
@@ -659,43 +675,29 @@ void _elr_alloc_mem_node(elr_mem_pool *pool)
 }
 
 /*移除一个未使用的NODE，返回0表示没有移除*/
-int _elr_remove_unused_node(elr_mem_node* pnode)
+void _elr_free_mem_node(elr_mem_node* pnode)
 {
-	int  free_node_flag = 0;
-	if(pnode->using_slice_count == 0)
-	{
-		if(pnode->free_slice_tail->next!=NULL)
-		{
-			pnode->free_slice_tail->next->prev = pnode->free_slice_head->prev;
-			free_node_flag = 1;
-		}
+	assert(pnode->using_slice_count == 0);
 
-		if(pnode->free_slice_head->prev!=NULL)
-		{
-			pnode->free_slice_head->prev->next = pnode->free_slice_tail->next;
-			free_node_flag = 1;
-		}
-		else /*if(node->owner->first_free_slice == node->free_slice_head)*/
-		{
-			if(free_node_flag)
-				pnode->owner->first_free_slice = pnode->free_slice_tail->next;
-		}
+	if (pnode->free_slice_tail->next != NULL)
+		pnode->free_slice_tail->next->prev = pnode->free_slice_head->prev;
 
-		if(free_node_flag)
-		{
-			if(pnode->next != NULL)
-				pnode->next->prev = pnode->prev;
+	if (pnode->free_slice_head->prev != NULL)
+		pnode->free_slice_head->prev->next = pnode->free_slice_tail->next;
 
-			if(pnode->prev != NULL)
-				pnode->prev->next = pnode->next;
-			else
-				pnode->owner->first_node = pnode->next;
+	if (pnode->owner->first_free_slice == pnode->free_slice_head)
+		pnode->owner->first_free_slice = pnode->free_slice_tail->next;
 
-			free(pnode);
-		}
-	}
+	if (pnode->next != NULL)
+		pnode->next->prev = pnode->prev;
 
-	return free_node_flag;
+	if (pnode->prev != NULL)
+		pnode->prev->next = pnode->next;
+	else
+		pnode->owner->first_node = pnode->next;
+
+	g_occupation_size -= pnode->owner->node_size;
+	free(pnode);
 }
 
 elr_mem_slice* _elr_slice_from_node(elr_mem_pool *pool)
@@ -743,6 +745,8 @@ elr_mem_slice* _elr_slice_from_pool(elr_mem_pool* pool)
     {
         slice = pool->first_free_slice;
 		slice->node->free_slice_head = slice->next;
+		if (slice->node->free_slice_head == NULL)
+			slice->node->free_slice_tail = NULL;
         pool->first_free_slice = slice->next;
 		if(pool->first_free_slice != NULL)
 			pool->first_free_slice->prev = NULL;
