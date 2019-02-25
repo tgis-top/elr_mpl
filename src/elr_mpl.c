@@ -545,12 +545,6 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
 		&& g_occupation_size >= ELR_AUTO_FREE_NODE_THRESHOLD)
 	{
 		_elr_free_mem_node(node);
-		slice->next = node->free_slice_tail->next;
-		if (node->free_slice_tail->next != NULL)
-			node->free_slice_tail->next->prev = slice;
-		node->free_slice_tail->next = slice;
-		slice->prev = node->free_slice_tail;
-		node->free_slice_tail = slice;
 	}
 	else
 	{
@@ -562,6 +556,15 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
 			if (pool->first_free_slice != NULL)
 				pool->first_free_slice->prev = slice;
 			pool->first_free_slice = slice;
+		}
+		else
+		{
+			slice->next = node->free_slice_tail->next;
+			if (node->free_slice_tail->next != NULL)
+				node->free_slice_tail->next->prev = slice;
+			node->free_slice_tail->next = slice;
+			slice->prev = node->free_slice_tail;
+			node->free_slice_tail = slice;
 		}
 	}
 

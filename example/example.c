@@ -21,34 +21,34 @@ int main()
 	printf("%s\n","alloc a memory block form mysubpool. It`s object size is 128.");
 
 	len = elr_mpl_size(mem);
-	printf("the memory block size is %d.\n",len);
+	printf("the memory block size is %zd.\n",len);
 
 	elr_mpl_free(mem);
-	printf("give back the memory block to mysubpool.\n",len);
+	printf("give back the memory block to mysubpool.\n");
 
 	mem = elr_mpl_alloc(&mypool);
 	printf("%s\n","alloc a memory block form mypool.");
 
 	len = elr_mpl_size(mem);
-	printf("the memory block size is %d.\n",len);
+	printf("the memory block size is %zd.\n",len);
 
 	elr_mpl_free(mem);
-	printf("give back the memory block to mypool.\n",len);
+	printf("give back the memory block to mypool.\n");
 
 	mem = elr_mpl_alloc_multi(NULL, 69);
-	printf("alloc a random memory block of size 69.\n", len);
+	printf("alloc a random memory block of size 69.\n");
 
 	len = elr_mpl_size(mem);
-	printf("the actual memory block size is %d.\n", len);
+	printf("the actual memory block size is %zd.\n", len);
 
 	mem = elr_mpl_alloc_multi(NULL, 2096);
-	printf("alloc a random memory block of size 2096.\n", len);
+	printf("alloc a random memory block of size 2096.\n");
 
 	len = elr_mpl_size(mem);
-	printf("the actual memory block size is %d.\n", len);
+	printf("the actual memory block size is %zd.\n", len);
 
 	elr_mpl_destroy(&mypool);
-	printf("destroy mypool.\n",len);
+	printf("destroy mypool.\n");
 
 	printf("when mypool has destoryed, it`s sub pool, mysubpool, had %s destoryed.\n",
 		elr_mpl_avail(&mysubpool) == 0?"also":"not");
