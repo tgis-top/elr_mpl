@@ -30,3 +30,19 @@
 
 # Debug files
 *.dSYM/
+
+# visual studio files
+/.vs/
+/**/GeneratedFiles/
+/**/x64/
+/**/Debug/
+/**/Release/
+/x64/
+*.VC.db
+*.VC.VC.opendb
+*.vcxproj.user
+*.obj
+/**/ipch
+*.ipch
+/output/
+
