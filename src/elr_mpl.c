@@ -124,7 +124,7 @@ elr_mem_slice*            _elr_slice_from_node(elr_mem_pool *pool);
 /*在内存池中分配一个内存切片，该方法将会调用上述两方法*/
 elr_mem_slice*            _elr_slice_from_pool(elr_mem_pool *pool);
 /*销毁内存池，inner表示是否是递归内部调用，lock_this是否需要锁定当前正释放的内存池*/
-void                      _elr_inter_mpl_destory(elr_mem_pool *pool, int inner, int lock_this);
+void                      _elr_mpl_destory(elr_mem_pool *pool, int inner, int lock_this);
 
 /*
 ** 初始化内存池，内部创建一个全局内存池。
@@ -215,16 +215,11 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
 		+ ELR_ALIGN(sizeof(elr_mem_slice),sizeof(int)));
 
 #ifdef ELR_USE_THREAD	
-	if(pool->slice_tag == 0)
+	if (elr_mtx_init(&pool->pool_mutex) == 0)
 	{
-		if(elr_mtx_init(&pool->pool_mutex)==0)
-		{
-			elr_mpl_free(pool);
-			return mpl;
-		}
+		elr_mpl_free(pool);
+		return mpl;
 	}
-
-	elr_mtx_lock(&pool->pool_mutex);
 #endif // ELR_USE_THREAD
 	pool->slice_tag = pslice->tag;
 	pool->first_child = NULL;
@@ -247,9 +242,6 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
 	pool->on_slice_alloc = on_alloc;
 	pool->on_slice_free = on_free;
 	pool->first_occupied_slice = NULL;
-#ifdef ELR_USE_THREAD
-	elr_mtx_unlock(&pool->pool_mutex);
-#endif // ELR_USE_THREAD
 
 #ifdef ELR_USE_THREAD
 	elr_mtx_lock(&pool->parent->pool_mutex);
@@ -280,11 +272,8 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi_1(elr_mpl_ht fpool, elr_mpl_callback 
 	int valid = 1;
 
 	multi_pool = malloc(obj_size_count * sizeof(elr_mem_pool*));
-
 	if (multi_pool == NULL)
-	{
 		return ELR_MPL_INITIALIZER;
-	}
 
 	for (i = 0; i < obj_size_count; i++)
 	{
@@ -325,7 +314,7 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_multi_1(elr_mpl_ht fpool, elr_mpl_callback 
 		first_mpl = ELR_MPL_INITIALIZER;
 		for (j = 0; j < i; j++)
 		{
-			_elr_inter_mpl_destory(multi_pool[j], 0, 0);
+			_elr_mpl_destory(multi_pool[j], 0, 0);
 		}
 	}
 
@@ -373,6 +362,7 @@ ELR_MPL_API int  elr_mpl_avail(elr_mpl_ht hpool)
 {
 	int              ret = 1;
 	elr_mem_slice   *pslice = NULL;
+	elr_mem_pool    *pool = NULL;
 
 	if(hpool->pool == NULL)
 	{
@@ -380,9 +370,11 @@ ELR_MPL_API int  elr_mpl_avail(elr_mpl_ht hpool)
 	}
 	else
 	{
+		pool = (elr_mem_pool*)hpool->pool;
 		pslice = (elr_mem_slice*)((char*)(hpool->pool) 
 			- ELR_ALIGN(sizeof(elr_mem_slice),sizeof(int)));
-		if (hpool->tag != pslice->tag)
+		if (hpool->tag != pool->slice_tag 
+			|| hpool->tag != pslice->tag)
 			ret = 0;
 	}
 
@@ -418,7 +410,7 @@ ELR_MPL_API void*  elr_mpl_alloc(elr_mpl_ht hpool)
 ELR_MPL_API void * elr_mpl_alloc_multi(elr_mpl_ht hpool, size_t size)
 {
 	void*          mem = NULL;
-	elr_mpl_t      new_pool = ELR_MPL_INITIALIZER;
+	elr_mpl_t      alloc_mpl = ELR_MPL_INITIALIZER;
 	elr_mem_slice *slice = NULL;
 	elr_mem_pool  *pool = NULL;
 	elr_mem_pool  *parent_pool = NULL;
@@ -429,10 +421,9 @@ ELR_MPL_API void * elr_mpl_alloc_multi(elr_mpl_ht hpool, size_t size)
 
 	assert(hpool == NULL  || elr_mpl_avail(hpool) != 0);
 
-	if(hpool == NULL)
-		pool = (elr_mem_pool*)g_multi_mem_pool.pool;
-	else
-		pool = (elr_mem_pool*)hpool->pool;
+	if (hpool == NULL)
+		hpool = &g_multi_mem_pool;
+	pool = (elr_mem_pool*)hpool->pool;
 
 	assert(pool->multi != NULL);
 
@@ -444,9 +435,9 @@ ELR_MPL_API void * elr_mpl_alloc_multi(elr_mpl_ht hpool, size_t size)
 	elr_mtx_lock(&pool->pool_mutex);
 #endif // ELR_USE_THREAD
 
-	if (pool_slice->tag != pool->slice_tag)
+	if (hpool->tag != pool->slice_tag 
+		|| pool->slice_tag != pool_slice->tag)
 		return NULL;
-
 
 	for (i = 0; i < pool->multi_count; i++)
 	{
@@ -474,20 +465,20 @@ ELR_MPL_API void * elr_mpl_alloc_multi(elr_mpl_ht hpool, size_t size)
 	if (alloc_pool == NULL)
 	{
 		size = ELR_OVERRANGE_UNIT_SIZE*((size + ELR_OVERRANGE_UNIT_SIZE - 1) / ELR_OVERRANGE_UNIT_SIZE);
-		new_pool.pool = parent_pool;
-		new_pool.tag = parent_pool->slice_tag;
-		new_pool = elr_mpl_create_ex(&new_pool, size, parent_pool->on_slice_alloc, parent_pool->on_slice_free);
-		alloc_pool = (elr_mem_pool*)new_pool.pool;
+		alloc_mpl.pool = parent_pool;
+		alloc_mpl.tag = parent_pool->slice_tag;
+		alloc_mpl = elr_mpl_create_ex(&alloc_mpl, size, parent_pool->on_slice_alloc, parent_pool->on_slice_free);
+		alloc_pool = (elr_mem_pool*)alloc_mpl.pool;
 	}
 	else
 	{
-		new_pool.pool = alloc_pool;
-		new_pool.tag = alloc_pool->slice_tag;
+		alloc_mpl.pool = alloc_pool;
+		alloc_mpl.tag = alloc_pool->slice_tag;
 	}
 
 	if (alloc_pool != NULL)
 	{
-		mem = elr_mpl_alloc(&new_pool);
+		mem = elr_mpl_alloc(&alloc_mpl);
 	}
 
 #ifdef ELR_USE_THREAD
@@ -582,7 +573,6 @@ ELR_MPL_API void elr_mpl_destroy(elr_mpl_ht hpool)
 {
     elr_mem_pool  *pool = NULL;
 	elr_mem_slice *pslice = NULL;
-	int            flag = 0;
 	int            j = 0;
 
 	assert(hpool!=NULL && elr_mpl_avail(hpool)!=0);
@@ -596,21 +586,19 @@ ELR_MPL_API void elr_mpl_destroy(elr_mpl_ht hpool)
 	pslice = (elr_mem_slice*)((char*)pool 
 		- ELR_ALIGN(sizeof(elr_mem_slice),sizeof(int)));
 
-	if(hpool->tag == pool->slice_tag)
-		flag = 1;
-	
-	if (flag == 1)
+	if (hpool->tag == pool->slice_tag 
+		&&  hpool->tag == pslice->tag)
 	{
 		if (pool->multi != NULL)
 		{
 			for (j = 0; j < pool->multi_count; j++)
 			{
-				_elr_inter_mpl_destory(pool->multi[j], 0, 0);
+				_elr_mpl_destory(pool->multi[j], 0, 0);
 			}
 		}
 		else
 		{
-			_elr_inter_mpl_destory(pool, 0, 1);
+			_elr_mpl_destory(pool, 0, 1);
 		}
 	}
 
@@ -638,7 +626,7 @@ ELR_MPL_API void elr_mpl_finalize()
 	if(g_mpl_refs == 0)
 	{
 #endif // ELR_USE_THREAD
-		_elr_inter_mpl_destory(&g_mem_pool,0,1);
+		_elr_mpl_destory(&g_mem_pool,0,1);
     }
 
 #ifdef ELR_USE_THREAD
@@ -795,7 +783,7 @@ elr_mem_slice* _elr_slice_from_pool(elr_mem_pool* pool)
 }
 
 
-void _elr_inter_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
+void _elr_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 {
     elr_mem_pool   *temp_pool = NULL;
     elr_mem_node   *temp_node = NULL;
@@ -823,12 +811,13 @@ void _elr_inter_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 
     while((temp_pool = pool->first_child) != NULL)
     {
-		_elr_inter_mpl_destory(temp_pool, 1, lock_this);
+		_elr_mpl_destory(temp_pool, 1, lock_this);
 	}
 
 #ifdef ELR_USE_THREAD
 	if (inner == 1 && lock_this == 1)
 		elr_mtx_unlock(&(pool->pool_mutex));
+	elr_mtx_finalize(&pool->pool_mutex);
 #endif // ELR_USE_THREAD
 
 	if (pool->on_slice_free != NULL)
@@ -847,23 +836,6 @@ void _elr_inter_mpl_destory(elr_mem_pool *pool, int inner, int lock_this)
 	while(temp_node != NULL)
 	{		
 		pool->first_node = temp_node->next;
-
-#ifdef ELR_USE_THREAD
-		if(pool == &g_mem_pool)
-		{
-			index = 0;
-			temp_pool = (elr_mem_pool*)((char*)temp_node
-				+ ELR_ALIGN(sizeof(elr_mem_node),sizeof(int))
-				+ ELR_ALIGN(sizeof(elr_mem_slice),sizeof(int)));
-			while(index < temp_node->used_slice_count)
-			{
-				elr_mtx_finalize(&pool->pool_mutex);
-				temp_pool = (elr_mem_pool*)((char*)pool+g_mem_pool.slice_size);
-				index++;
-			}
-		}
-#endif // ELR_USE_THREAD
-
 		free(temp_node);
 		temp_node = pool->first_node ;
 	}
