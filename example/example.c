@@ -11,10 +11,10 @@ int main()
 
 	elr_mpl_init();	
 
-	mypool = elr_mpl_create(NULL,256);
+	mypool = elr_mpl_create(NULL, 256, NULL, NULL);
 	printf("%s\n","create a memory pool: mypool. It`s object size is 256.");
 
-	mysubpool = elr_mpl_create(&mypool,128);
+	mysubpool = elr_mpl_create(&mypool,128, NULL, NULL);
 	printf("%s\n","create a sub memory pool of mypool, name is mysubpool.");
 
 	mem = elr_mpl_alloc(&mysubpool);

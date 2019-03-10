@@ -21,6 +21,9 @@
     <ClCompile Include="test.c">
       <Filter>test</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\elr_mtx.c">
+      <Filter>elr_mpl\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\inc\elr_mpl.h">
@@ -28,6 +31,9 @@
     </ClInclude>
     <ClInclude Include="cunit.h">
       <Filter>test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\elr_mtx.h">
+      <Filter>elr_mpl\inc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

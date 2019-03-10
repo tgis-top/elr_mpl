@@ -130,19 +130,6 @@ ELR_MPL_API int elr_mpl_init();
 /*
 ** 创建一个内存池，并指定分配单元大小。
 ** 第一个参数表示父内存池，如果其为NULL，表示创建的内存池的父内存池是全局内存池。
-*/
-/*! \brief create a memory pool.
- *  \param fpool the parent pool of the about to created pool.
- *  \param obj_size the size of memory block can alloc from the pool.
- *  \retval NULL if failed.
- *
- *  in fact this memory pool is more like object pool.
- */
-ELR_MPL_API elr_mpl_t elr_mpl_create(elr_mpl_ht fpool,size_t obj_size);
-
-/*
-** 创建一个内存池。
-** 第一个参数表示父内存池，如果其为NULL，表示创建的内存池的父内存池是全局内存池。
 ** 第二个参数表示分配单元大小。
 ** 第三个参数提供一个函数指针，该函数会在成功申请内存后执行。
 ** 第四个参数提供一个函数指针，该函数会在释放内存时执行。
@@ -156,10 +143,18 @@ ELR_MPL_API elr_mpl_t elr_mpl_create(elr_mpl_ht fpool,size_t obj_size);
  *
  *  in fact this memory pool is more like object pool.
  */
-ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
-										size_t obj_size,
-										elr_mpl_callback on_alloc,
-										elr_mpl_callback on_free);
+ELR_MPL_API elr_mpl_t elr_mpl_create(elr_mpl_ht fpool,
+	size_t obj_size,
+	elr_mpl_callback on_alloc,
+	elr_mpl_callback on_free);
+
+/*
+** 创建一个带线程同步支持的内存池，并指定分配单元大小。
+*/
+ELR_MPL_API elr_mpl_t elr_mpl_create_sync(elr_mpl_ht fpool,
+	size_t obj_size,
+	elr_mpl_callback on_alloc,
+	elr_mpl_callback on_free);
 
 /*
 ** 创建可以从中申请不同大小内存块的内存池。
@@ -170,26 +165,21 @@ ELR_MPL_API elr_mpl_t elr_mpl_create_ex(elr_mpl_ht fpool,
 ** 之后传入多个int类型的参数指定将要用到的多个最可能obj_size
 ** obj_size必须是int类型，否则会创建失败
 */
-ELR_MPL_API elr_mpl_t elr_mpl_create_multi_2(elr_mpl_ht fpool,
-										   elr_mpl_callback on_alloc,
-										   elr_mpl_callback on_free,
-	                                       int obj_size_count,
-	                                       ...);
+ELR_MPL_API elr_mpl_t elr_mpl_create_multi(elr_mpl_ht fpool,
+	int obj_size_count,
+	size_t* obj_size,
+	elr_mpl_callback on_alloc,
+	elr_mpl_callback on_free);
+
 
 /*
-** 创建可以从中申请不同大小内存块的内存池。
-** 第一个参数表示父内存池，如果其为NULL，表示创建的内存池的父内存池是全局内存池。
-** 第二个参数提供一个函数指针，该函数会在成功申请内存后执行。
-** 第三个参数提供一个函数指针，该函数会在释放内存时执行。
-** 第四个参数表示有多少个不同大小的obj_size。
-** 之后传入多个int类型的参数指定将要用到的多个最可能obj_size
-** obj_size必须是int类型，否则会创建失败
+** 创建可以从中申请不同大小内存块的并带线程同步支持内存池。
 */
-ELR_MPL_API elr_mpl_t elr_mpl_create_multi_1(elr_mpl_ht fpool,
-										   elr_mpl_callback on_alloc,
-										   elr_mpl_callback on_free,
-	                                       int obj_size_count,
-	                                       size_t* obj_size);
+ELR_MPL_API elr_mpl_t elr_mpl_create_multi_sync(elr_mpl_ht fpool,
+	int obj_size_count,
+	size_t* obj_size,
+	elr_mpl_callback on_alloc,
+	elr_mpl_callback on_free);
 
 
 /*
