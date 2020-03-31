@@ -17,7 +17,7 @@
 /*将内存节点划分成多个内存切片时的最大内存切片的数目*/
 /*将内存节点划分成多个内存切片时的最大内存节点大小为 ELR_MAX_SLICE_COUNT*ELR_MAX_SLICE_SIZE */
 /*实际需要的内存切片越大时，最终的内存切片数量越少，*/
-/*通过一个公式保证了内存节点的大型近似等于 ELR_MAX_SLICE_COUNT*ELR_MAX_SLICE_SIZE*/
+/*通过一个公式保证了内存节点的大小近似等于 ELR_MAX_SLICE_COUNT*ELR_MAX_SLICE_SIZE*/
 #define ELR_MAX_SLICE_COUNT                64   /*64*/
 
 /*多尺寸内存池中的子池都不满足申请大小时新创建的内存池的内存块大小的基数*/
