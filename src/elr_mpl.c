@@ -643,8 +643,8 @@ ELR_MPL_API void  elr_mpl_free(void* mem)
 		else
 		{
 			slice->next = node->free_slice_tail->next;
-			if (node->free_slice_tail->next != NULL)
-				node->free_slice_tail->next->prev = slice;
+			if (slice->next != NULL)
+				slice->next->prev = slice;
 			node->free_slice_tail->next = slice;
 			slice->prev = node->free_slice_tail;
 			node->free_slice_tail = slice;
@@ -752,22 +752,22 @@ void _elr_alloc_mem_node(elr_mem_pool *pool)
     }
 }
 
-/*移除一个未使用的NODE，返回0表示没有移除*/
+/*移除一个未使用的NODE*/
 void _elr_free_mem_node(elr_mem_node* pnode)
 {
 	assert(pnode->using_slice_count == 0);
 
-	if (pnode->free_slice_tail != NULL 
-		&& pnode->free_slice_tail->next != NULL)
-		pnode->free_slice_tail->next->prev = pnode->free_slice_head->prev;
+	if (pnode->free_slice_head != NULL)
+	{
+		if (pnode->free_slice_tail->next != NULL)
+			pnode->free_slice_tail->next->prev = pnode->free_slice_head->prev;
 
-	if (pnode->free_slice_head != NULL 
-		&& pnode->free_slice_head->prev != NULL)
-		pnode->free_slice_head->prev->next = pnode->free_slice_tail->next;
+		if (pnode->free_slice_head->prev != NULL)
+			pnode->free_slice_head->prev->next = pnode->free_slice_tail->next;
 
-	if (pnode->owner->first_free_slice != NULL
-		&& pnode->owner->first_free_slice == pnode->free_slice_head)
-		pnode->owner->first_free_slice = pnode->free_slice_tail->next;
+		if (pnode->owner->first_free_slice == pnode->free_slice_head)
+			pnode->owner->first_free_slice = pnode->free_slice_tail->next;
+	}
 
 	if (pnode->owner->newly_alloc_node == pnode)
 		pnode->owner->newly_alloc_node = NULL;
