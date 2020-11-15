@@ -827,8 +827,8 @@ elr_mem_slice* _elr_slice_from_pool(elr_mem_pool* pool)
 		if (pool->first_free_slice != NULL)
 		{
 			pool->first_free_slice->prev = NULL;
-			if(slice->next->node == slice->node)
-				slice->node->free_slice_head = slice->next;
+			if(pool->first_free_slice->node == slice->node)
+				slice->node->free_slice_head = pool->first_free_slice;
 		}
 		
 		if (slice->node->free_slice_head == NULL)
